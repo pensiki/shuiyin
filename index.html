@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>明星动态水印助手 V5（iPhone 风格）</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <style>
+        :root {
+            --primary: #007aff;
+            --primary-soft: rgba(0, 122, 255, 0.12);
+            --bg: #f2f2f7;
+            --card: rgba(255, 255, 255, 0.9);
+            --line: rgba(60, 60, 67, 0.12);
+            --text: #111111;
+            --secondary: #3c3c43;
+            --muted: rgba(60, 60, 67, 0.6);
+            --danger: #ff3b30;
+            --shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(0,122,255,0.10), transparent 28%),
+                linear-gradient(180deg, #f9f9fb 0%, var(--bg) 42%, #eef1f7 100%);
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+            padding: 0;
+        }
+        button, input { font: inherit; }
+        .shell {
+            width: 100%;
+            max-width: 430px;
+            margin: 0 auto;
+            min-height: 100dvh;
+            padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px calc(env(safe-area-inset-bottom, 0px) + 94px);
+        }
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 4px 14px;
+        }
+        .nav-left { min-width: 0; }
+        .eyebrow {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            letter-spacing: 0.2px;
+        }
+        .title {
+            margin: 0;
+            font-size: 28px;
+            line-height: 1.1;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .nav-badge {
+            flex: 0 0 auto;
+            min-width: 60px;
+            text-align: center;
+            padding: 10px 12px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            box-shadow: var(--shadow);
+        }
+        .nav-badge b {
+            display: block;
+            font-size: 17px;
+            margin-bottom: 2px;
+        }
+        .nav-badge span {
+            font-size: 11px;
+            color: var(--muted);
+        }
+        .hero {
+            background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.8));
+            border: 1px solid rgba(255,255,255,0.72);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 18px;
+            margin-bottom: 12px;
+        }
+        .hero h2 {
+            margin: 0 0 8px;
+            font-size: 20px;
+            line-height: 1.2;
+        }
+        .hero p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+        .upload-zone {
+            margin-top: 14px;
+            border: 1.5px dashed rgba(0,122,255,0.22);
+            background: linear-gradient(180deg, rgba(0,122,255,0.06), rgba(255,255,255,0.85));
+            border-radius: 24px;
+            padding: 18px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .upload-zone:active {
+            transform: scale(0.99);
+        }
+        .upload-icon {
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 10px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            background: rgba(255,255,255,0.95);
+            box-shadow: inset 0 0 0 1px rgba(60,60,67,0.08);
+            font-size: 26px;
+        }
+        .upload-title {
+            margin: 0 0 4px;
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .upload-sub {
+            margin: 0;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        .status {
+            min-height: 20px;
+            padding: 10px 6px 2px;
+            font-size: 12px;
+            text-align: center;
+            color: var(--muted);
+        }
+        .loader {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-right: 6px;
+            vertical-align: -2px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .editor { display: none; }
+        .section {
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.76);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .section-note {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: right;
+        }
+        .seg-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .stat {
+            background: rgba(255,255,255,0.8);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 12px 14px;
+        }
+        .stat b {
+            display: block;
+            font-size: 22px;
+            line-height: 1;
+            margin-bottom: 5px;
+            letter-spacing: -0.03em;
+        }
+        .stat span {
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .field-stack { display: grid; gap: 10px; }
+        .field {
+            background: rgba(255,255,255,0.8);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 12px 14px;
+        }
+        .field label {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .field input[type="text"] {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 0;
+            font-size: 17px;
+            color: var(--text);
+            outline: none;
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-value {
+            flex: 0 0 auto;
+            min-width: 46px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: 700;
+            padding: 6px 8px;
+            border-radius: 12px;
+            background: var(--primary-soft);
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 0;
+            accent-color: var(--primary);
+        }
+        .preview-strip {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 2px 2px 2px;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+        }
+        .preview-strip::-webkit-scrollbar { display: none; }
+        .preview-card {
+            flex: 0 0 118px;
+            scroll-snap-align: start;
+            border-radius: 22px;
+            background: rgba(255,255,255,0.86);
+            border: 1px solid rgba(60,60,67,0.10);
+            padding: 8px;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3);
+            transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+            cursor: pointer;
+        }
+        .preview-card.active {
+            border-color: rgba(0,122,255,0.55);
+            box-shadow: 0 10px 22px rgba(0,122,255,0.16);
+            transform: translateY(-1px);
+        }
+        .preview-thumb {
+            width: 100%;
+            aspect-ratio: 9 / 16;
+            object-fit: cover;
+            display: block;
+            border-radius: 16px;
+            background: #eceef2;
+        }
+        .preview-name {
+            margin-top: 7px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .preview-meta {
+            margin-top: 3px;
+            font-size: 10px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .canvas-wrap {
+            border-radius: 24px;
+            padding: 10px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(244,246,251,0.88));
+            border: 1px solid rgba(60,60,67,0.1);
+        }
+        .canvas-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+            background: #000;
+            touch-action: none;
+            cursor: ns-resize;
+            min-height: 280px;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        .hint {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 10px;
+            line-height: 1.45;
+        }
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .tool-btn, .footer-btn, .tab-btn {
+            border: none;
+            border-radius: 18px;
+            min-height: 48px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.14s ease, opacity 0.14s ease, box-shadow 0.14s ease;
+        }
+        .tool-btn:active, .footer-btn:active, .tab-btn:active { transform: scale(0.985); }
+        .primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(0,122,255,0.24);
+        }
+        .secondary {
+            background: rgba(255,255,255,0.88);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+        .ghost {
+            background: rgba(0,122,255,0.08);
+            color: var(--primary);
+        }
+        .destructive {
+            background: rgba(255,59,48,0.10);
+            color: var(--danger);
+        }
+        .mini-list {
+            display: grid;
+            gap: 8px;
+        }
+        .mini-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.78);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            font-size: 13px;
+        }
+        .mini-item span { color: var(--muted); }
+        .bottom-bar {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+            width: min(406px, calc(100vw - 16px));
+            padding: 8px;
+            display: grid;
+            grid-template-columns: 0.95fr 1.05fr 0.95fr;
+            gap: 8px;
+            border-radius: 24px;
+            background: rgba(255,255,255,0.82);
+            border: 1px solid rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px) saturate(1.15);
+            -webkit-backdrop-filter: blur(20px) saturate(1.15);
+            box-shadow: 0 16px 36px rgba(17, 24, 39, 0.14);
+            z-index: 50;
+        }
+        .footer-btn {
+            min-height: 50px;
+            font-size: 14px;
+        }
+        .hidden { display: none !important; }
+        @media (min-width: 431px) {
+            .shell { max-width: 460px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="nav">
+            <div class="nav-left">
+                <div class="eyebrow">iPhone 风格批量工具</div>
+                <h1 class="title">水印助手</h1>
+            </div>
+            <div class="nav-badge">
+                <b id="count-total">0</b>
+                <span>图片</span>
+            </div>
+        </div>
+
+        <div class="hero">
+            <h2>批量上传，逐张微调，手机上也顺手</h2>
+            <p>横向预览切换当前图片，直接在主图上拖动水印位置；识别到的博主 ID 会自动填入，也可以手动改。</p>
+            <div class="upload-zone" id="upload-zone">
+                <div class="upload-icon">📷</div>
+                <p class="upload-title">选择截图</p>
+                <p class="upload-sub">支持一次多选，适合 Twitter / IG 截图；当前版本更偏 iPhone 工具 App 的交互。</p>
+            </div>
+            <input type="file" id="file-input" hidden accept="image/*" multiple>
+            <div id="status" class="status">引擎准备中...</div>
+        </div>
+
+        <div class="editor" id="editor">
+            <div class="section">
+                <div class="section-head">
+                    <div class="section-title">概览</div>
+                    <div class="section-note"><span id="count-done">0</span> 张已识别 / 已填写</div>
+                </div>
+                <div class="seg-stats">
+                    <div class="stat">
+                        <b id="count-active">0</b>
+                        <span>当前序号</span>
+                    </div>
+                    <div class="stat">
+                        <b id="style-mode">深色</b>
+                        <span>当前字色</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-head">
+                    <div class="section-title">当前图片设置</div>
+                    <div class="section-note">单张调整</div>
+                </div>
+                <div class="field-stack">
+                    <div class="field">
+                        <label for="id-input">博主 ID</label>
+                        <input type="text" id="id-input" placeholder="请输入 ID（如 productionportugal）">
+                    </div>
+                    <div class="field">
+                        <label for="pos-slider">水印高度</label>
+                        <div class="slider-row">
+                            <input type="range" id="pos-slider" min="5" max="95" value="88">
+                            <div class="slider-value" id="slider-value">88%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-head">
+                    <div class="section-title">批量预览</div>
+                    <div class="section-note">横向滑动</div>
+                </div>
+                <div class="preview-strip" id="preview-strip"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-head">
+                    <div class="section-title">画布</div>
+                    <div class="section-note">拖动主图即可改位置</div>
+                </div>
+                <div class="canvas-wrap">
+                    <div class="canvas-container" id="canvas-container">
+                        <canvas id="out-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="hint">上下拖动主图可调整当前图片水印高度。先在上方预览中点选某张，再拖动会更顺手。</div>
+            </div>
+
+            <div class="section">
+                <div class="section-head">
+                    <div class="section-title">更多操作</div>
+                    <div class="section-note">批量处理</div>
+                </div>
+                <div class="tool-grid" style="margin-bottom:10px;">
+                    <button class="tool-btn secondary" id="btn-toggle-color">切换黑 / 白字</button>
+                    <button class="tool-btn ghost" id="btn-apply-all">同步当前样式</button>
+                </div>
+                <div class="tool-grid">
+                    <button class="tool-btn primary" id="btn-save-all">批量保存</button>
+                    <button class="tool-btn destructive" id="btn-clear">清空全部</button>
+                </div>
+                <div class="mini-list" style="margin-top:10px;">
+                    <div class="mini-item"><strong>批量保存</strong><span>会逐张触发下载</span></div>
+                    <div class="mini-item"><strong>同步当前样式</strong><span>同步位置和黑白字</span></div>
+                    <div class="mini-item"><strong>OCR 失败</strong><span>可直接手动改 ID</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-bar hidden" id="bottom-bar">
+        <button class="footer-btn secondary" id="btn-toggle-color-mobile">字色</button>
+        <button class="footer-btn primary" id="btn-save-mobile">保存当前</button>
+        <button class="footer-btn ghost" id="btn-apply-all-mobile">同步全部</button>
+    </div>
+
+<script>
+    const MY_ID = "只吃好吃的不算挑食";
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const status = document.getElementById('status');
+    const editor = document.getElementById('editor');
+    const bottomBar = document.getElementById('bottom-bar');
+    const idInput = document.getElementById('id-input');
+    const canvas = document.getElementById('out-canvas');
+    const ctx = canvas.getContext('2d');
+    const posSlider = document.getElementById('pos-slider');
+    const sliderValue = document.getElementById('slider-value');
+    const btnSaveAll = document.getElementById('btn-save-all');
+    const btnClear = document.getElementById('btn-clear');
+    const btnColor = document.getElementById('btn-toggle-color');
+    const btnApplyAll = document.getElementById('btn-apply-all');
+    const btnSaveMobile = document.getElementById('btn-save-mobile');
+    const btnColorMobile = document.getElementById('btn-toggle-color-mobile');
+    const btnApplyAllMobile = document.getElementById('btn-apply-all-mobile');
+    const container = document.getElementById('canvas-container');
+    const previewStrip = document.getElementById('preview-strip');
+    const countTotal = document.getElementById('count-total');
+    const countDone = document.getElementById('count-done');
+    const countActive = document.getElementById('count-active');
+    const styleMode = document.getElementById('style-mode');
+
+    let images = [];
+    let activeIndex = -1;
+    let isDragging = false;
+    let ocrReady = false;
+
+    setTimeout(() => {
+        if (typeof Tesseract !== 'undefined') {
+            status.innerText = '✅ 引擎就绪，可自动识别 ID';
+            ocrReady = true;
+        } else {
+            status.innerText = '⚠️ 自动识别暂不可用，请手动输入 ID';
+        }
+    }, 1200);
+
+    uploadZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => handleFiles(Array.from(e.target.files || []));
+
+    function createItem(file, src) {
+        return {
+            file,
+            name: file.name,
+            src,
+            img: null,
+            id: '',
+            watermarkY: 0.885,
+            isDark: true,
+            ocrStatus: 'pending'
+        };
+    }
+
+    function handleFiles(files) {
+        if (!files.length) return;
+        status.innerHTML = `<span class="loader"></span> 正在加载 ${files.length} 张图片...`;
+
+        let loaded = 0;
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const item = createItem(file, e.target.result);
+                    item.img = img;
+                    images.push(item);
+                    loaded += 1;
+
+                    if (activeIndex === -1) {
+                        activeIndex = 0;
+                    }
+
+                    renderPreviewStrip();
+                    updateStats();
+                    if (ocrReady) recognizeID(item, images.length - 1);
+
+                    if (loaded === files.length) {
+                        editor.style.display = 'block';
+                        bottomBar.classList.remove('hidden');
+                        status.innerText = `✅ 已载入 ${files.length} 张图片`;
+                        syncActiveToUI();
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        fileInput.value = '';
+    }
+
+    async function recognizeID(item, index) {
+        item.ocrStatus = 'loading';
+        updateStats();
+        renderPreviewStrip();
+        try {
+            const img = item.img;
+            const scanW = img.width * 0.6;
+            const scanH = img.height * 0.15;
+            const scanCanvas = document.createElement('canvas');
+            scanCanvas.width = scanW;
+            scanCanvas.height = scanH;
+            const sCtx = scanCanvas.getContext('2d');
+            sCtx.drawImage(img, img.width * 0.05, img.height * 0.06, scanW, scanH, 0, 0, scanW, scanH);
+
+            const result = await Tesseract.recognize(scanCanvas, 'eng');
+            const id = result.data.text
+                .trim()
+                .split('\n')
+                .map(l => l.replace(/[^a-zA-Z0-9._]/g, ''))
+                .filter(l => l.length > 2)[0];
+
+            if (id) {
+                item.id = id;
+                item.ocrStatus = 'done';
+                if (index === activeIndex) idInput.value = id;
+            } else {
+                item.ocrStatus = 'fail';
+            }
+        } catch (e) {
+            item.ocrStatus = 'fail';
+        }
+
+        renderPreviewStrip();
+        updateStats();
+        if (index === activeIndex) {
+            draw();
+            status.innerText = item.ocrStatus === 'done' ? '✅ 当前图片自动识别成功' : '❓ 当前图片识别不准，请手动修改';
+        }
+    }
+
+    function getActiveItem() {
+        return images[activeIndex] || null;
+    }
+
+    function updateStats() {
+        countTotal.textContent = images.length;
+        countDone.textContent = images.filter(item => item.id && item.id.trim()).length;
+        countActive.textContent = activeIndex >= 0 ? `${activeIndex + 1}` : '0';
+        const item = getActiveItem();
+        styleMode.textContent = item ? (item.isDark ? '深色' : '浅色') : '深色';
+        btnColor.textContent = item && item.isDark ? '切换为白字' : '切换为黑字';
+        btnColorMobile.textContent = item && item.isDark ? '白字' : '黑字';
+    }
+
+    function syncActiveToUI() {
+        const item = getActiveItem();
+        if (!item || !item.img) return;
+        canvas.width = item.img.width;
+        canvas.height = item.img.height;
+        idInput.value = item.id || '';
+        posSlider.value = Math.round(item.watermarkY * 100);
+        sliderValue.textContent = `${Math.round(item.watermarkY * 100)}%`;
+        draw();
+        renderPreviewStrip();
+        updateStats();
+        editor.style.display = 'block';
+        bottomBar.classList.remove('hidden');
+    }
+
+    function draw(targetCanvas = canvas, item = getActiveItem()) {
+        if (!item || !item.img) return;
+        const targetCtx = targetCanvas.getContext('2d');
+        targetCanvas.width = item.img.width;
+        targetCanvas.height = item.img.height;
+        targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+        targetCtx.drawImage(item.img, 0, 0);
+
+        const id = item.id || 'ID';
+        const text = `From: @${id} | 整理分享: @${MY_ID}`;
+        const fontSize = Math.floor(targetCanvas.width / 44);
+        targetCtx.font = `500 ${fontSize}px -apple-system, sans-serif`;
+        targetCtx.textAlign = 'center';
+        targetCtx.fillStyle = item.isDark ? 'rgba(40, 40, 40, 0.45)' : 'rgba(255, 255, 255, 0.68)';
+        targetCtx.fillText(text, targetCanvas.width / 2, targetCanvas.height * item.watermarkY);
+    }
+
+    function renderPreviewStrip() {
+        previewStrip.innerHTML = '';
+        images.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = `preview-card ${index === activeIndex ? 'active' : ''}`;
+            card.onclick = () => {
+                activeIndex = index;
+                syncActiveToUI();
+            };
+
+            const thumb = document.createElement('img');
+            thumb.className = 'preview-thumb';
+            thumb.src = item.src;
+
+            const name = document.createElement('div');
+            name.className = 'preview-name';
+            name.textContent = item.name;
+
+            const meta = document.createElement('div');
+            meta.className = 'preview-meta';
+            if (item.ocrStatus === 'loading') meta.textContent = '识别中...';
+            else if (item.id) meta.textContent = `@${item.id}`;
+            else if (item.ocrStatus === 'fail') meta.textContent = '待手动填写';
+            else meta.textContent = '待处理';
+
+            card.appendChild(thumb);
+            card.appendChild(name);
+            card.appendChild(meta);
+            previewStrip.appendChild(card);
+        });
+    }
+
+    function updatePos(clientY) {
+        const item = getActiveItem();
+        if (!item) return;
+        const rect = canvas.getBoundingClientRect();
+        item.watermarkY = Math.max(0.02, Math.min(0.98, (clientY - rect.top) / rect.height));
+        const percent = Math.round(item.watermarkY * 100);
+        posSlider.value = percent;
+        sliderValue.textContent = `${percent}%`;
+        draw();
+    }
+
+    function downloadItem(item, index) {
+        const exportCanvas = document.createElement('canvas');
+        draw(exportCanvas, item);
+        const link = document.createElement('a');
+        const safeId = (item.id || 'ID').replace(/[^a-zA-Z0-9._-]/g, '_');
+        link.download = `Watermark_${String(index + 1).padStart(2, '0')}_${safeId}.png`;
+        link.href = exportCanvas.toDataURL('image/png', 1.0);
+        link.click();
+    }
+
+    container.onmousedown = () => isDragging = true;
+    window.onmousemove = (e) => { if (isDragging) updatePos(e.clientY); };
+    window.onmouseup = () => isDragging = false;
+    container.ontouchstart = (e) => {
+        isDragging = true;
+        updatePos(e.touches[0].clientY);
+    };
+    container.ontouchmove = (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            updatePos(e.touches[0].clientY);
+        }
+    };
+    container.ontouchend = () => isDragging = false;
+
+    idInput.oninput = () => {
+        const item = getActiveItem();
+        if (!item) return;
+        item.id = idInput.value.trim();
+        renderPreviewStrip();
+        updateStats();
+        draw();
+    };
+
+    posSlider.oninput = (e) => {
+        const item = getActiveItem();
+        if (!item) return;
+        item.watermarkY = e.target.value / 100;
+        sliderValue.textContent = `${e.target.value}%`;
+        draw();
+    };
+
+    function toggleColorForActive() {
+        const item = getActiveItem();
+        if (!item) return;
+        item.isDark = !item.isDark;
+        updateStats();
+        draw();
+    }
+
+    btnColor.onclick = toggleColorForActive;
+    btnColorMobile.onclick = toggleColorForActive;
+
+    function applyStyleToAll() {
+        const item = getActiveItem();
+        if (!item) return;
+        images.forEach(imgItem => {
+            imgItem.watermarkY = item.watermarkY;
+            imgItem.isDark = item.isDark;
+        });
+        updateStats();
+        draw();
+        status.innerText = '✅ 已将当前水印位置和字色同步到全部图片';
+    }
+
+    btnApplyAll.onclick = applyStyleToAll;
+    btnApplyAllMobile.onclick = applyStyleToAll;
+
+    function saveActiveItem() {
+        const item = getActiveItem();
+        if (!item) return;
+        downloadItem(item, activeIndex);
+    }
+
+    btnSaveMobile.onclick = saveActiveItem;
+
+    btnSaveAll.onclick = async () => {
+        if (!images.length) return;
+        status.innerHTML = `<span class="loader"></span> 正在批量保存 ${images.length} 张图片...`;
+        for (let i = 0; i < images.length; i++) {
+            downloadItem(images[i], i);
+            await new Promise(resolve => setTimeout(resolve, 180));
+        }
+        status.innerText = `✅ 已触发 ${images.length} 张图片的下载`;
+    };
+
+    btnClear.onclick = () => {
+        images = [];
+        activeIndex = -1;
+        previewStrip.innerHTML = '';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        idInput.value = '';
+        posSlider.value = 88;
+        sliderValue.textContent = '88%';
+        editor.style.display = 'none';
+        bottomBar.classList.add('hidden');
+        updateStats();
+        status.innerText = '已清空，重新上传即可';
+    };
+</script>
+</body>
+</html>
