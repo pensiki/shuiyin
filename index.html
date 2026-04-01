@@ -5,65 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>水印助手</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
-    :root{
-      --bg:#f2f2f7; --card:rgba(255,255,255,.86); --line:rgba(60,60,67,.14); --text:#111;
-      --muted:rgba(60,60,67,.62); --primary:#007aff; --soft:rgba(0,122,255,.12); --shadow:0 12px 28px rgba(17,24,39,.08);
-    }
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;background:linear-gradient(180deg,#fafbff 0%,#f2f2f7 55%,#edf1f7 100%);color:var(--text)}
-    .shell{max-width:430px;margin:0 auto;min-height:100dvh;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px calc(env(safe-area-inset-bottom,0px) + 98px)}
-    .nav{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 4px 14px}
-    .eyebrow{font-size:12px;color:var(--muted);margin-bottom:4px}
-    .title{margin:0;font-size:28px;line-height:1.08;font-weight:800;letter-spacing:-.03em}
-    .badge{min-width:68px;padding:10px 12px;border-radius:18px;background:rgba(255,255,255,.72);backdrop-filter:blur(18px);box-shadow:var(--shadow);text-align:center}
-    .badge b{display:block;font-size:18px}.badge span{font-size:11px;color:var(--muted)}
-    .card{background:var(--card);border:1px solid rgba(255,255,255,.76);backdrop-filter:blur(18px);box-shadow:var(--shadow);border-radius:24px;padding:14px;margin-bottom:12px}
-    .hero{padding:18px}.hero h2{margin:0 0 8px;font-size:21px;line-height:1.2}.hero p{margin:0;font-size:13px;color:var(--muted);line-height:1.55}
-    .upload{margin-top:14px;border:1.5px dashed rgba(0,122,255,.22);background:linear-gradient(180deg,rgba(0,122,255,.06),rgba(255,255,255,.85));border-radius:24px;padding:18px 14px;text-align:center;cursor:pointer}
-    .upload:active{transform:scale(.99)}
+    :root{--bg:#f2f2f7;--card:rgba(255,255,255,.88);--line:rgba(60,60,67,.14);--text:#111;--muted:rgba(60,60,67,.62);--primary:#007aff;--soft:rgba(0,122,255,.10);--shadow:0 12px 28px rgba(17,24,39,.08)}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} body{margin:0;background:linear-gradient(180deg,#fafbff 0%,#f2f2f7 55%,#edf1f7 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;color:var(--text)}
+    .shell{max-width:430px;margin:0 auto;min-height:100dvh;padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 100px)}
+    .nav{display:flex;justify-content:space-between;align-items:flex-start;padding:4px 4px 12px}.title{margin:2px 0 0;font-size:28px;font-weight:800;letter-spacing:-.03em}.eyebrow{font-size:12px;color:var(--muted)}.badge{background:rgba(255,255,255,.74);backdrop-filter:blur(18px);border-radius:18px;padding:10px 14px;box-shadow:var(--shadow);text-align:center}.badge b{display:block;font-size:18px}.badge span{font-size:11px;color:var(--muted)}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.8);backdrop-filter:blur(18px);box-shadow:var(--shadow);border-radius:24px;padding:14px;margin-bottom:12px}
+    .hero h2{margin:0 0 8px;font-size:21px}.hero p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+    .upload{margin-top:14px;border:1.5px dashed rgba(0,122,255,.22);background:linear-gradient(180deg,rgba(0,122,255,.06),rgba(255,255,255,.85));border-radius:24px;padding:18px 14px;text-align:center;cursor:pointer}.upload:active{transform:scale(.99)}
     .upload-icon{width:54px;height:54px;margin:0 auto 10px;border-radius:18px;display:grid;place-items:center;background:#fff;font-size:26px;box-shadow:inset 0 0 0 1px rgba(60,60,67,.08)}
-    .upload-title{margin:0 0 4px;font-size:17px;font-weight:700}.upload-sub{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
-    .status{min-height:20px;padding:10px 6px 2px;text-align:center;font-size:12px;color:var(--muted)}
-    .loader{display:inline-block;width:12px;height:12px;border:2px solid var(--primary);border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:6px;vertical-align:-2px}@keyframes spin{to{transform:rotate(360deg)}}
-    .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.section-title{font-size:16px;font-weight:700}.section-note{font-size:11px;color:var(--muted)}
-    .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px;background:rgba(118,118,128,.12);border-radius:16px}
-    .seg button{border:none;background:transparent;border-radius:12px;min-height:38px;font-size:13px;font-weight:700;color:var(--muted)}
-    .seg button.active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
-    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:rgba(255,255,255,.8);border:1px solid var(--line);border-radius:18px;padding:12px 14px}.stat b{display:block;font-size:22px;line-height:1;margin-bottom:5px}.stat span{font-size:12px;color:var(--muted)}
-    .field{background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:18px;padding:12px 14px;margin-top:10px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}.field input{width:100%;border:none;background:transparent;padding:0;font-size:17px;outline:none;color:var(--text)}
-    .slider-row{display:flex;align-items:center;gap:10px}.slider-value{min-width:52px;text-align:center;font-size:13px;font-weight:700;color:var(--primary);padding:6px 8px;border-radius:12px;background:var(--soft)} input[type=range]{width:100%;margin:0;accent-color:var(--primary)}
+    .upload-title{margin:0 0 4px;font-size:17px;font-weight:700}.upload-sub{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+    .status{min-height:20px;padding:10px 4px 2px;text-align:center;font-size:12px;color:var(--muted)} .loader{display:inline-block;width:12px;height:12px;border:2px solid var(--primary);border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;margin-right:6px;vertical-align:-2px}@keyframes spin{to{transform:rotate(360deg)}}
+    .section-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}.section-title{font-size:16px;font-weight:700}.section-note{font-size:11px;color:var(--muted)}
+    .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px;background:rgba(118,118,128,.12);border-radius:16px}.seg button{border:none;background:transparent;border-radius:12px;min-height:38px;font-size:13px;font-weight:700;color:var(--muted)}.seg button.active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:18px;padding:12px 14px}.stat b{display:block;font-size:22px;line-height:1;margin-bottom:5px}.stat span{font-size:12px;color:var(--muted)}
+    .field{background:rgba(255,255,255,.84);border:1px solid var(--line);border-radius:18px;padding:12px 14px;margin-top:10px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px}.field input{width:100%;border:none;background:transparent;padding:0;font-size:17px;outline:none;color:var(--text)}
+    .slider-row{display:flex;align-items:center;gap:10px}.slider-value{min-width:54px;text-align:center;font-size:13px;font-weight:700;color:var(--primary);padding:6px 8px;border-radius:12px;background:var(--soft)} input[type=range]{width:100%;margin:0;accent-color:var(--primary)}
     .preview-strip{display:flex;gap:10px;overflow-x:auto;padding:2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.preview-strip::-webkit-scrollbar{display:none}
-    .preview-card{flex:0 0 118px;scroll-snap-align:start;border-radius:22px;background:rgba(255,255,255,.86);border:1px solid rgba(60,60,67,.10);padding:8px;cursor:pointer;transition:.16s}.preview-card.active{border-color:rgba(0,122,255,.55);box-shadow:0 10px 22px rgba(0,122,255,.16);transform:translateY(-1px)}
-    .thumb-wrap{position:relative}.preview-thumb{width:100%;aspect-ratio:9/16;object-fit:cover;display:block;border-radius:16px;background:#eceef2}.thumb-index{position:absolute;left:8px;top:8px;padding:4px 7px;border-radius:999px;background:rgba(17,17,17,.58);color:#fff;font-size:10px;font-weight:700}.thumb-state{position:absolute;right:8px;top:8px;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.88);font-size:10px;font-weight:700;color:var(--text)}
-    .preview-meta{margin-top:7px;font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:16px}
-    .canvas-wrap{border-radius:24px;padding:10px;background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(244,246,251,.88));border:1px solid rgba(60,60,67,.1)}
-    .canvas-container{position:relative;overflow:hidden;border-radius:20px;background:#000;touch-action:none;cursor:ns-resize;min-height:280px}.canvas-container canvas{display:block;width:100%;height:auto;max-width:100%;margin:0 auto}
-    .hint{text-align:center;font-size:12px;color:var(--muted);margin-top:10px;line-height:1.45}
-    .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:none;border-radius:18px;min-height:48px;padding:12px 14px;font-size:15px;font-weight:700}.btn:active{transform:scale(.985)}.primary{background:var(--primary);color:#fff;box-shadow:0 12px 24px rgba(0,122,255,.24)}.secondary{background:rgba(255,255,255,.9);border:1px solid var(--line);color:var(--text)}.ghost{background:rgba(0,122,255,.08);color:var(--primary)}.destructive{background:rgba(255,59,48,.10);color:#ff3b30}
-    .mini{display:grid;gap:8px;margin-top:10px}.mini-item{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;background:rgba(255,255,255,.78);border:1px solid var(--line);border-radius:18px;font-size:13px}.mini-item span{color:var(--muted)}
+    .preview-card{flex:0 0 118px;scroll-snap-align:start;border-radius:22px;background:rgba(255,255,255,.88);border:1px solid rgba(60,60,67,.10);padding:8px;cursor:pointer}.preview-card.active{border-color:rgba(0,122,255,.55);box-shadow:0 10px 22px rgba(0,122,255,.16)}
+    .thumb-wrap{position:relative}.preview-thumb{width:100%;aspect-ratio:9/16;object-fit:cover;display:block;border-radius:16px;background:#eceef2}.thumb-index{position:absolute;left:8px;top:8px;padding:4px 7px;border-radius:999px;background:rgba(17,17,17,.58);color:#fff;font-size:10px;font-weight:700}.thumb-state{position:absolute;right:8px;top:8px;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.90);font-size:10px;font-weight:700;color:var(--text)}.preview-meta{margin-top:7px;font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:16px}
+    .canvas-wrap{border-radius:24px;padding:10px;background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(244,246,251,.88));border:1px solid rgba(60,60,67,.10)}.canvas-container{position:relative;overflow:hidden;border-radius:20px;background:#000;touch-action:none;cursor:ns-resize;min-height:280px}.canvas-container canvas{display:block;width:100%;height:auto;max-width:100%;margin:0 auto}.hint{text-align:center;font-size:12px;color:var(--muted);margin-top:10px;line-height:1.45}
+    .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:none;border-radius:18px;min-height:48px;padding:12px 14px;font-size:15px;font-weight:700}.btn:active{transform:scale(.985)}.primary{background:var(--primary);color:#fff;box-shadow:0 12px 24px rgba(0,122,255,.24)}.secondary{background:rgba(255,255,255,.9);border:1px solid var(--line);color:var(--text)}.ghost{background:rgba(0,122,255,.08);color:var(--primary)}.hidden{display:none!important}
     .bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:min(406px,calc(100vw - 16px));padding:8px;display:grid;grid-template-columns:.95fr 1.05fr .95fr;gap:8px;border-radius:24px;background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.8);backdrop-filter:blur(20px) saturate(1.15);box-shadow:0 16px 36px rgba(17,24,39,.14);z-index:50}
-    .hidden{display:none!important}
   </style>
 </head>
 <body>
   <div class="shell">
-    <div class="nav">
-      <div>
-        <div class="eyebrow">iPhone 风格批量工具</div>
-        <h1 class="title">水印助手</h1>
-      </div>
-      <div class="badge"><b id="count-total">0</b><span>图片</span></div>
-    </div>
+    <div class="nav"><div><div class="eyebrow">iPhone 风格批量工具</div><h1 class="title">水印助手</h1></div><div class="badge"><b id="count-total">0</b><span>图片</span></div></div>
 
     <div class="card hero">
       <h2>批量上传，逐张微调，IG / X 分开识别</h2>
-      <p>现在支持自动、IG、X 三种识别模式。IG 会优先扫头像右侧用户名区和顶部标题区；预览卡片也去掉了文件名，只保留更干净的缩略图信息。</p>
-      <div class="upload" id="upload-zone">
-        <div class="upload-icon">📷</div>
-        <p class="upload-title">选择截图</p>
-        <p class="upload-sub">支持一次多选，手机上横向预览、主图拖动、底部固定操作栏。</p>
-      </div>
+      <p>这版顺手把移动端保存逻辑也修了：单张保存优先走 iPhone 分享；批量保存改成打包 ZIP，避免 Safari 连续下载闪一下没反应。</p>
+      <div class="upload" id="upload-zone"><div class="upload-icon">📷</div><p class="upload-title">选择截图</p><p class="upload-sub">支持一次多选，手机上横向预览、主图拖动、底部固定操作栏。</p></div>
       <input id="file-input" type="file" hidden accept="image/*" multiple>
       <div id="status" class="status">引擎准备中...</div>
     </div>
@@ -72,62 +46,24 @@
       <div class="card">
         <div class="section-head"><div class="section-title">识别模式</div><div class="section-note" id="ocr-note">默认自动判断</div></div>
         <div class="seg" id="platform-seg">
-          <button class="active" data-platform="auto">自动</button>
-          <button data-platform="ig">IG</button>
-          <button data-platform="x">X</button>
+          <button class="active" data-platform="auto">自动</button><button data-platform="ig">IG</button><button data-platform="x">X</button>
         </div>
       </div>
 
       <div class="card">
         <div class="section-head"><div class="section-title">概览</div><div class="section-note"><span id="count-done">0</span> 张已识别 / 已填写</div></div>
-        <div class="stats">
-          <div class="stat"><b id="count-active">0</b><span>当前序号</span></div>
-          <div class="stat"><b id="style-mode">深色</b><span>当前字色</span></div>
-        </div>
+        <div class="stats"><div class="stat"><b id="count-active">0</b><span>当前序号</span></div><div class="stat"><b id="style-mode">深色</b><span>当前字色</span></div></div>
       </div>
 
       <div class="card">
         <div class="section-head"><div class="section-title">当前图片设置</div><div class="section-note" id="current-platform">模式：自动</div></div>
-        <div class="field">
-          <label for="id-input">博主 ID</label>
-          <input id="id-input" type="text" placeholder="请输入 ID（如 newjeans_official）">
-        </div>
-        <div class="field">
-          <label for="pos-slider">水印高度</label>
-          <div class="slider-row">
-            <input id="pos-slider" type="range" min="5" max="95" value="88">
-            <div class="slider-value" id="slider-value">88%</div>
-          </div>
-        </div>
+        <div class="field"><label for="id-input">博主 ID</label><input id="id-input" type="text" placeholder="请输入 ID（如 newjeans_official）"></div>
+        <div class="field"><label for="pos-slider">水印高度</label><div class="slider-row"><input id="pos-slider" type="range" min="5" max="95" value="88"><div class="slider-value" id="slider-value">88%</div></div></div>
       </div>
 
-      <div class="card">
-        <div class="section-head"><div class="section-title">批量预览</div><div class="section-note">横向滑动</div></div>
-        <div class="preview-strip" id="preview-strip"></div>
-      </div>
-
-      <div class="card">
-        <div class="section-head"><div class="section-title">画布</div><div class="section-note">拖动主图即可改位置</div></div>
-        <div class="canvas-wrap"><div class="canvas-container" id="canvas-container"><canvas id="out-canvas"></canvas></div></div>
-        <div class="hint">上下拖动主图可调整当前图片水印高度。识别不准时，直接改上方 ID 就行。</div>
-      </div>
-
-      <div class="card">
-        <div class="section-head"><div class="section-title">更多操作</div><div class="section-note">批量处理</div></div>
-        <div class="tool-grid" style="margin-bottom:10px">
-          <button class="btn secondary" id="btn-toggle-color">切换黑 / 白字</button>
-          <button class="btn ghost" id="btn-apply-all">同步当前样式</button>
-        </div>
-        <div class="tool-grid">
-          <button class="btn primary" id="btn-save-all">批量保存</button>
-          <button class="btn destructive" id="btn-clear">清空全部</button>
-        </div>
-        <div class="mini">
-          <div class="mini-item"><strong>IG 识别</strong><span>优先扫账号区与标题区</span></div>
-          <div class="mini-item"><strong>X 识别</strong><span>优先扫左上用户名区域</span></div>
-          <div class="mini-item"><strong>预览卡片</strong><span>不再显示文件名</span></div>
-        </div>
-      </div>
+      <div class="card"><div class="section-head"><div class="section-title">批量预览</div><div class="section-note">横向滑动</div></div><div class="preview-strip" id="preview-strip"></div></div>
+      <div class="card"><div class="section-head"><div class="section-title">画布</div><div class="section-note">拖动主图即可改位置</div></div><div class="canvas-wrap"><div class="canvas-container" id="canvas-container"><canvas id="out-canvas"></canvas></div></div><div class="hint">上下拖动主图可调整当前图片水印高度。识别不准时，直接改上方 ID 就行。</div></div>
+      <div class="card"><div class="section-head"><div class="section-title">更多操作</div><div class="section-note">批量处理</div></div><div class="tool-grid"><button class="btn secondary" id="btn-toggle-color">切换黑 / 白字</button><button class="btn ghost" id="btn-apply-all">同步当前样式到全部</button><button class="btn primary" id="btn-save">保存当前</button><button class="btn primary" id="btn-save-all">批量保存 ZIP</button></div></div>
     </div>
   </div>
 
@@ -139,31 +75,32 @@
 
 <script>
 const MY_ID = '只吃好吃的不算挑食';
+const COMMON_STOP_WORDS = new Set(['post','posts','view','liked','likes','reply','replies','share','follow','following','message','thread','threads','bunnies','day','happy']);
+const UI_WORDS_CN = ['帖子','查看翻译','查看引用','相关','回复','分享','喜欢','点赞','次查看'];
 const uploadZone = document.getElementById('upload-zone');
 const fileInput = document.getElementById('file-input');
 const status = document.getElementById('status');
 const editor = document.getElementById('editor');
 const bottomBar = document.getElementById('bottom-bar');
 const idInput = document.getElementById('id-input');
+const canvas = document.getElementById('out-canvas');
 const posSlider = document.getElementById('pos-slider');
 const sliderValue = document.getElementById('slider-value');
-const previewStrip = document.getElementById('preview-strip');
-const canvas = document.getElementById('out-canvas');
-const ctx = canvas.getContext('2d');
+const btnSave = document.getElementById('btn-save');
+const btnSaveAll = document.getElementById('btn-save-all');
+const btnColor = document.getElementById('btn-toggle-color');
+const btnApplyAll = document.getElementById('btn-apply-all');
+const btnSaveMobile = document.getElementById('btn-save-mobile');
+const btnColorMobile = document.getElementById('btn-toggle-color-mobile');
+const btnApplyAllMobile = document.getElementById('btn-apply-all-mobile');
 const container = document.getElementById('canvas-container');
+const previewStrip = document.getElementById('preview-strip');
 const countTotal = document.getElementById('count-total');
 const countDone = document.getElementById('count-done');
 const countActive = document.getElementById('count-active');
 const styleMode = document.getElementById('style-mode');
 const currentPlatform = document.getElementById('current-platform');
 const ocrNote = document.getElementById('ocr-note');
-const btnColor = document.getElementById('btn-toggle-color');
-const btnApplyAll = document.getElementById('btn-apply-all');
-const btnSaveAll = document.getElementById('btn-save-all');
-const btnClear = document.getElementById('btn-clear');
-const btnSaveMobile = document.getElementById('btn-save-mobile');
-const btnColorMobile = document.getElementById('btn-toggle-color-mobile');
-const btnApplyAllMobile = document.getElementById('btn-apply-all-mobile');
 const platformSeg = document.getElementById('platform-seg');
 
 let images = [];
@@ -172,71 +109,43 @@ let isDragging = false;
 let ocrReady = false;
 let selectedPlatform = 'auto';
 
-const COMMON_STOP_WORDS = new Set(['post','posts','reply','replies','translate','view','liked','likes','share','following','for','you','home','reel','reels','thread','threads','new','old','instagram','twitter','tweet','x']);
-const UI_WORDS_CN = ['帖子','查看翻译','查看引用','为你推荐','发布你的回复','回复','相关','次查看'];
-
 setTimeout(() => {
   if (typeof Tesseract !== 'undefined') {
+    status.innerText = '✅ 引擎就绪，可自动识别 ID';
     ocrReady = true;
-    status.innerText = '✅ 引擎就绪';
   } else {
     status.innerText = '⚠️ 自动识别暂不可用，请手动输入 ID';
   }
-}, 800);
+}, 1200);
+
+function platformLabel(v){ return v === 'ig' ? 'IG' : v === 'x' ? 'X' : '自动'; }
+function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function blobToFile(blob, name){ return new File([blob], name, { type: blob.type || 'application/octet-stream' }); }
+function dataURLToBlob(dataURL){ const arr=dataURL.split(','); const mime=arr[0].match(/:(.*?);/)[1]; const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--) u8[n]=bstr.charCodeAt(n); return new Blob([u8],{type:mime}); }
+function canvasToBlob(c){ return new Promise(r => c.toBlob(r, 'image/png', 1)); }
 
 uploadZone.onclick = () => fileInput.click();
 fileInput.onchange = e => handleFiles(Array.from(e.target.files || []));
 
-platformSeg.addEventListener('click', async (e) => {
-  const btn = e.target.closest('button[data-platform]');
-  if (!btn) return;
-  selectedPlatform = btn.dataset.platform;
-  [...platformSeg.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b === btn));
-  currentPlatform.textContent = `模式：${platformLabel(selectedPlatform)}`;
-  ocrNote.textContent = selectedPlatform === 'auto' ? '默认自动判断' : `当前固定为 ${platformLabel(selectedPlatform)}`;
-  const item = getActiveItem();
-  if (item && ocrReady && !item.manualEdited) {
-    status.innerHTML = '<span class="loader"></span> 正在按新模式重识别当前图片...';
-    item.platformPreference = selectedPlatform;
-    item.id = '';
-    await recognizeID(item, activeIndex, true);
-  }
-});
-
-function platformLabel(v){ return v === 'ig' ? 'IG' : v === 'x' ? 'X' : '自动'; }
+function createItem(file, src) {
+  return { file, name:file.name, src, img:null, id:'', watermarkY:.885, isDark:true, ocrStatus:'pending', ocrSource:'', platformPreference:selectedPlatform, platformDetected:'', manualEdited:false };
+}
 
 function handleFiles(files){
-  if (!files.length) return;
-  status.innerHTML = ocrReady ? '<span class="loader"></span> 正在载入并识别图片...' : '正在载入图片...';
+  if(!files.length) return;
+  status.innerHTML = `<span class="loader"></span> 正在加载 ${files.length} 张图片...`;
   let loaded = 0;
   files.forEach(file => {
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
       img.onload = async () => {
-        const item = {
-          name: file.name,
-          src: e.target.result,
-          img,
-          id: '',
-          watermarkY: .885,
-          isDark: true,
-          ocrStatus: 'idle',
-          ocrSource: '',
-          platformPreference: selectedPlatform,
-          platformDetected: '',
-          manualEdited: false
-        };
-        images.push(item);
-        loaded++;
+        const item = createItem(file, e.target.result); item.img = img; images.push(item); loaded += 1;
         if (activeIndex === -1) activeIndex = 0;
-        renderPreviewStrip();
-        updateStats();
+        renderPreviewStrip(); updateStats();
         if (ocrReady) recognizeID(item, images.length - 1);
         if (loaded === files.length) {
-          editor.classList.remove('hidden');
-          bottomBar.classList.remove('hidden');
-          syncActiveToUI();
+          editor.classList.remove('hidden'); bottomBar.classList.remove('hidden'); syncActiveToUI();
           status.innerText = `✅ 已载入 ${files.length} 张图片`;
         }
       };
@@ -247,296 +156,54 @@ function handleFiles(files){
   fileInput.value = '';
 }
 
-function cropCanvas(img, x, y, w, h) {
-  const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.floor(w));
-  c.height = Math.max(1, Math.floor(h));
-  const cctx = c.getContext('2d');
-  cctx.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
-  return c;
-}
-
-async function ocrTextFromRegion(img, rx, ry, rw, rh) {
-  const c = cropCanvas(img, img.width * rx, img.height * ry, img.width * rw, img.height * rh);
-  const result = await Tesseract.recognize(c, 'eng');
-  return (result.data && result.data.text) ? result.data.text : '';
-}
-
-function normalizeLine(line) {
-  return line
-    .replace(/^[^@A-Za-z0-9._]+/, '')
-    .replace(/[^A-Za-z0-9._@]+$/g, '')
-    .replace(/\s+/g, '')
-    .trim();
-}
-
-function cleanCandidate(raw) {
-  if (!raw) return '';
-  let t = normalizeLine(raw).replace(/^@+/, '');
-  t = t.replace(/[^A-Za-z0-9._]/g, '');
-  t = t.replace(/\.{2,}/g, '.').replace(/_{2,}/g, '_');
-  return t;
-}
-
-function isLikelyUsername(text) {
-  if (!text) return false;
-  if (text.length < 3 || text.length > 30) return false;
-  if (/^\d+$/.test(text)) return false;
-  if (!/[A-Za-z]/.test(text)) return false;
-  if (/^[._]/.test(text) || /[._]$/.test(text)) return false;
-  const low = text.toLowerCase();
-  if (COMMON_STOP_WORDS.has(low)) return false;
-  if (UI_WORDS_CN.some(w => low.includes(w))) return false;
-  return /^[A-Za-z0-9._]+$/.test(text);
-}
-
-function candidateScore(text) {
-  let s = 0;
-  if (!text) return s;
-  if (text.includes('_')) s += 3;
-  if (text.includes('.')) s += 2;
-  if (/[A-Za-z]/.test(text) && /\d/.test(text)) s += 1;
-  if (text.length >= 5 && text.length <= 20) s += 2;
-  if (/^[a-z0-9._]+$/.test(text)) s += 2;
-  return s;
-}
-
-function extractCandidates(text) {
-  if (!text) return [];
-  const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
-  const out = [];
-  for (const line of lines) {
-    const norm = normalizeLine(line);
-    const atMatches = norm.match(/@[A-Za-z0-9._]{3,30}/g) || [];
-    atMatches.forEach(m => out.push(cleanCandidate(m)));
-    const tokens = norm.split(/\s+/).map(cleanCandidate).filter(Boolean);
-    tokens.forEach(t => out.push(t));
-  }
-  return [...new Set(out)].filter(isLikelyUsername).sort((a,b) => candidateScore(b) - candidateScore(a));
-}
-
-async function recognizeIG(img) {
-  const texts = [];
-  texts.push(await ocrTextFromRegion(img, 0.08, 0.12, 0.68, 0.12)); // 头像右侧用户名区
-  texts.push(await ocrTextFromRegion(img, 0.20, 0.05, 0.60, 0.08)); // 顶部标题区
-  const all = texts.flatMap(extractCandidates);
-  const counts = {};
-  all.forEach(v => counts[v] = (counts[v] || 0) + 1);
-  const ranked = [...new Set(all)].sort((a,b) => (counts[b]-counts[a]) || (candidateScore(b)-candidateScore(a)));
-  return { id: ranked[0] || '', source: counts[ranked[0]] >= 2 ? 'IG 双区一致' : (ranked[0] ? 'IG 账号区' : '') };
-}
-
-async function recognizeX(img) {
-  const texts = [];
-  texts.push(await ocrTextFromRegion(img, 0.05, 0.05, 0.62, 0.16)); // 左上用户名区
-  texts.push(await ocrTextFromRegion(img, 0.02, 0.00, 0.72, 0.22)); // 稍大兜底区域
-  const all = texts.flatMap(extractCandidates);
-  const ranked = [...new Set(all)].sort((a,b) => candidateScore(b) - candidateScore(a));
-  return { id: ranked[0] || '', source: ranked[0] ? 'X 左上账号区' : '' };
-}
-
-async function recognizeID(item, index, isRefetch = false) {
-  item.ocrStatus = 'loading';
-  item.ocrSource = '';
-  renderPreviewStrip();
-  const pref = item.platformPreference || selectedPlatform || 'auto';
-  try {
-    let best = { id: '', source: '', platform: '' };
-    if (pref === 'ig') {
-      const ig = await recognizeIG(item.img);
-      best = { ...ig, platform: 'ig' };
-    } else if (pref === 'x') {
-      const x = await recognizeX(item.img);
-      best = { ...x, platform: 'x' };
-    } else {
-      const ig = await recognizeIG(item.img);
-      const x = await recognizeX(item.img);
-      if (ig.id && x.id && ig.id === x.id) best = { id: ig.id, source: '自动判断：IG / X 结果一致', platform: 'auto' };
-      else if (ig.id && !x.id) best = { ...ig, platform: 'ig' };
-      else if (!ig.id && x.id) best = { ...x, platform: 'x' };
-      else if (ig.id && x.id) best = candidateScore(ig.id) >= candidateScore(x.id) ? { ...ig, platform: 'ig' } : { ...x, platform: 'x' };
-    }
-
-    if (best.id) {
-      item.id = best.id;
-      item.ocrStatus = 'done';
-      item.ocrSource = best.source;
-      item.platformDetected = best.platform;
-      if (index === activeIndex && !item.manualEdited) idInput.value = best.id;
-    } else {
-      item.ocrStatus = 'fail';
-      item.ocrSource = '未识别到可靠用户名';
-      item.platformDetected = pref;
-    }
-  } catch (err) {
-    item.ocrStatus = 'fail';
-    item.ocrSource = '识别失败';
-  }
-  renderPreviewStrip();
-  updateStats();
-  if (index === activeIndex) {
-    draw();
-    const msg = item.ocrStatus === 'done'
-      ? `✅ 当前图片已识别：${item.id}${item.ocrSource ? `（${item.ocrSource}）` : ''}`
-      : '❓ 当前图片识别不准，请手动修改';
-    status.innerText = msg;
-  } else if (isRefetch) {
-    status.innerText = item.ocrStatus === 'done' ? `✅ 已按新模式重识别：${item.id}` : '❓ 重识别后仍不够可靠，请手动修改';
-  }
+function cropCanvas(img, x, y, w, h){ const c=document.createElement('canvas'); c.width=Math.max(1,Math.floor(w)); c.height=Math.max(1,Math.floor(h)); c.getContext('2d').drawImage(img, x,y,w,h, 0,0,c.width,c.height); return c; }
+async function ocrTextFromRegion(img, rx, ry, rw, rh){ const c = cropCanvas(img, img.width*rx, img.height*ry, img.width*rw, img.height*rh); const result = await Tesseract.recognize(c, 'eng'); return result?.data?.text || ''; }
+function normalizeLine(line){ return line.replace(/^[^@A-Za-z0-9._]+/, '').replace(/[^A-Za-z0-9._@]+$/g, '').replace(/\s+/g, '').trim(); }
+function cleanCandidate(raw){ if(!raw) return ''; let t = normalizeLine(raw).replace(/^@+/, ''); t = t.replace(/[^A-Za-z0-9._]/g, ''); return t.replace(/\.{2,}/g,'.').replace(/_{2,}/g,'_'); }
+function isLikelyUsername(text){ if(!text || text.length<3 || text.length>30) return false; if(/^\d+$/.test(text)) return false; if(!/[A-Za-z]/.test(text)) return false; if(/^[._]/.test(text)||/[._]$/.test(text)) return false; const low=text.toLowerCase(); if(COMMON_STOP_WORDS.has(low)) return false; if(UI_WORDS_CN.some(w => low.includes(w))) return false; return /^[A-Za-z0-9._]+$/.test(text); }
+function candidateScore(text){ let s=0; if(!text) return s; if(text.includes('_')) s+=3; if(text.includes('.')) s+=2; if(/[A-Za-z]/.test(text)&&/\d/.test(text)) s+=1; if(text.length>=5&&text.length<=20) s+=2; if(/^[a-z0-9._]+$/.test(text)) s+=2; return s; }
+function extractCandidates(text){ if(!text) return []; const lines=text.split(/\n+/).map(s=>s.trim()).filter(Boolean); const out=[]; for(const line of lines){ const norm=normalizeLine(line); const atMatches=norm.match(/@[A-Za-z0-9._]{3,30}/g)||[]; atMatches.forEach(m=>out.push(cleanCandidate(m))); norm.split(/\s+/).map(cleanCandidate).filter(Boolean).forEach(t=>out.push(t)); } return [...new Set(out)].filter(isLikelyUsername).sort((a,b)=>candidateScore(b)-candidateScore(a)); }
+async function recognizeIG(img){ const texts=[]; texts.push(await ocrTextFromRegion(img, .08,.12,.68,.12)); texts.push(await ocrTextFromRegion(img, .20,.05,.60,.08)); const all=texts.flatMap(extractCandidates); const counts={}; all.forEach(v=>counts[v]=(counts[v]||0)+1); const ranked=[...new Set(all)].sort((a,b)=>(counts[b]-counts[a])||(candidateScore(b)-candidateScore(a))); return {id:ranked[0]||'', source: counts[ranked[0]]>=2?'IG 双区一致':(ranked[0]?'IG 账号区':'')}; }
+async function recognizeX(img){ const texts=[]; texts.push(await ocrTextFromRegion(img, .05,.05,.62,.16)); texts.push(await ocrTextFromRegion(img, .02,.00,.72,.22)); const all=texts.flatMap(extractCandidates); const ranked=[...new Set(all)].sort((a,b)=>candidateScore(b)-candidateScore(a)); return {id:ranked[0]||'', source: ranked[0]?'X 左上账号区':''}; }
+async function recognizeID(item, index){ item.ocrStatus='loading'; renderPreviewStrip(); const pref=item.platformPreference||selectedPlatform||'auto'; try{ let best={id:'',source:'',platform:''}; if(pref==='ig'){ const ig=await recognizeIG(item.img); best={...ig,platform:'ig'}; } else if(pref==='x'){ const x=await recognizeX(item.img); best={...x,platform:'x'}; } else { const ig=await recognizeIG(item.img); const x=await recognizeX(item.img); if(ig.id&&x.id&&ig.id===x.id) best={id:ig.id,source:'自动判断：IG / X 结果一致',platform:'auto'}; else if(ig.id&&!x.id) best={...ig,platform:'ig'}; else if(!ig.id&&x.id) best={...x,platform:'x'}; else if(ig.id&&x.id) best = candidateScore(ig.id)>=candidateScore(x.id)?{...ig,platform:'ig'}:{...x,platform:'x'}; }
+  if(best.id){ item.id=best.id; item.ocrStatus='done'; item.ocrSource=best.source; item.platformDetected=best.platform; if(index===activeIndex && !item.manualEdited) idInput.value=best.id; }
+  else { item.ocrStatus='fail'; item.ocrSource='未识别到可靠用户名'; item.platformDetected=pref; }
+ } catch(e){ item.ocrStatus='fail'; item.ocrSource='识别失败'; }
+ renderPreviewStrip(); updateStats(); if(index===activeIndex){ draw(); status.innerText = item.ocrStatus==='done' ? `✅ 当前图片已识别：${item.id}` : '❓ 当前图片识别不准，请手动修改'; }
 }
 
 function getActiveItem(){ return images[activeIndex] || null; }
-
-function syncActiveToUI() {
-  const item = getActiveItem();
-  if (!item) return;
-  canvas.width = item.img.width; canvas.height = item.img.height;
-  idInput.value = item.id || '';
-  posSlider.value = Math.round(item.watermarkY * 100);
-  sliderValue.textContent = `${Math.round(item.watermarkY * 100)}%`;
-  styleMode.textContent = item.isDark ? '深色' : '浅色';
-  countActive.textContent = `${activeIndex + 1}`;
-  currentPlatform.textContent = `模式：${platformLabel(selectedPlatform)}`;
-  draw();
-  renderPreviewStrip();
-}
-
-function draw(targetCanvas = canvas, item = getActiveItem()) {
-  if (!item || !item.img) return;
-  const c = targetCanvas.getContext('2d');
-  targetCanvas.width = item.img.width; targetCanvas.height = item.img.height;
-  c.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
-  c.drawImage(item.img, 0, 0);
-  const id = item.id || 'ID';
-  const text = `From: @${id} | 整理分享: @${MY_ID}`;
-  const fontSize = Math.floor(targetCanvas.width / 44);
-  c.font = `500 ${fontSize}px -apple-system, sans-serif`;
-  c.textAlign = 'center';
-  c.fillStyle = item.isDark ? 'rgba(40,40,40,.45)' : 'rgba(255,255,255,.65)';
-  c.fillText(text, targetCanvas.width / 2, targetCanvas.height * item.watermarkY);
-}
-
-function renderPreviewStrip() {
-  previewStrip.innerHTML = '';
-  images.forEach((item, index) => {
-    const card = document.createElement('div');
-    card.className = `preview-card ${index === activeIndex ? 'active' : ''}`;
-    card.onclick = () => { activeIndex = index; syncActiveToUI(); };
-
-    const wrap = document.createElement('div');
-    wrap.className = 'thumb-wrap';
-    const thumb = document.createElement('img');
-    thumb.className = 'preview-thumb'; thumb.src = item.src;
-    const order = document.createElement('div');
-    order.className = 'thumb-index'; order.textContent = `${index + 1}/${images.length}`;
-    const state = document.createElement('div');
-    state.className = 'thumb-state';
-    state.textContent = item.ocrStatus === 'loading' ? '识别中' : item.platformDetected ? platformLabel(item.platformDetected) : platformLabel(item.platformPreference || selectedPlatform);
-    wrap.append(thumb, order, state);
-
-    const meta = document.createElement('div');
-    meta.className = 'preview-meta';
-    if (item.ocrStatus === 'loading') meta.textContent = '正在识别...';
-    else if (item.id) meta.textContent = `@${item.id}`;
-    else if (item.ocrStatus === 'fail') meta.textContent = '待手动填写';
-    else meta.textContent = '待处理';
-
-    card.append(wrap, meta);
-    previewStrip.appendChild(card);
-  });
-}
-
-function updateStats() {
-  countTotal.textContent = images.length;
-  countDone.textContent = images.filter(v => (v.id || '').trim()).length;
-  countActive.textContent = activeIndex >= 0 ? String(activeIndex + 1) : '0';
-}
-
-function updatePos(clientY) {
-  const item = getActiveItem();
-  if (!item) return;
-  const rect = canvas.getBoundingClientRect();
-  item.watermarkY = Math.max(.02, Math.min(.98, (clientY - rect.top) / rect.height));
-  posSlider.value = Math.round(item.watermarkY * 100);
-  sliderValue.textContent = `${Math.round(item.watermarkY * 100)}%`;
-  draw();
-}
-
-function downloadItem(item, index) {
-  const exportCanvas = document.createElement('canvas');
-  draw(exportCanvas, item);
-  const link = document.createElement('a');
-  const safeId = (item.id || 'ID').replace(/[^a-zA-Z0-9._-]/g, '_');
-  link.download = `Watermark_${String(index + 1).padStart(2, '0')}_${safeId}.png`;
-  link.href = exportCanvas.toDataURL('image/png', 1.0);
-  link.click();
-}
-
-container.onmousedown = () => isDragging = true;
-window.onmousemove = e => { if (isDragging) updatePos(e.clientY); };
-window.onmouseup = () => isDragging = false;
-container.ontouchstart = e => { isDragging = true; updatePos(e.touches[0].clientY); };
-container.ontouchmove = e => { if (isDragging) { e.preventDefault(); updatePos(e.touches[0].clientY); } };
-container.ontouchend = () => isDragging = false;
-
-idInput.oninput = () => {
-  const item = getActiveItem();
-  if (!item) return;
-  item.id = idInput.value.trim();
-  item.manualEdited = true;
-  renderPreviewStrip();
-  updateStats();
-  draw();
-};
-
-posSlider.oninput = e => {
-  const item = getActiveItem();
-  if (!item) return;
-  item.watermarkY = e.target.value / 100;
-  sliderValue.textContent = `${e.target.value}%`;
-  draw();
-};
-
-function toggleColorForActive() {
-  const item = getActiveItem();
-  if (!item) return;
-  item.isDark = !item.isDark;
-  styleMode.textContent = item.isDark ? '深色' : '浅色';
-  draw();
-}
-btnColor.onclick = toggleColorForActive;
-btnColorMobile.onclick = toggleColorForActive;
-
-function applyStyleToAll() {
-  const item = getActiveItem();
-  if (!item) return;
-  images.forEach(v => { v.watermarkY = item.watermarkY; v.isDark = item.isDark; });
-  renderPreviewStrip(); draw();
-  status.innerText = '✅ 已将当前水印位置和黑白字同步到全部图片';
-}
-btnApplyAll.onclick = applyStyleToAll;
-btnApplyAllMobile.onclick = applyStyleToAll;
-
-function saveActiveItem() { const item = getActiveItem(); if (item) downloadItem(item, activeIndex); }
-btnSaveMobile.onclick = saveActiveItem;
-
-document.getElementById('btn-save-all').onclick = async () => {
-  if (!images.length) return;
-  status.innerHTML = `<span class="loader"></span> 正在批量保存 ${images.length} 张图片...`;
-  for (let i = 0; i < images.length; i++) {
-    downloadItem(images[i], i);
-    await new Promise(r => setTimeout(r, 180));
+function syncActiveToUI(){ const item=getActiveItem(); if(!item) return; canvas.width=item.img.width; canvas.height=item.img.height; idInput.value=item.id||''; posSlider.value=Math.round(item.watermarkY*100); sliderValue.textContent=`${Math.round(item.watermarkY*100)}%`; styleMode.textContent=item.isDark?'深色':'浅色'; countActive.textContent=String(activeIndex+1); currentPlatform.textContent=`模式：${platformLabel(selectedPlatform)}`; ocrNote.textContent=`当前默认：${platformLabel(selectedPlatform)}`; draw(); renderPreviewStrip(); updateStats(); }
+function draw(targetCanvas = canvas, item=getActiveItem()){ if(!item||!item.img) return; const c=targetCanvas.getContext('2d'); targetCanvas.width=item.img.width; targetCanvas.height=item.img.height; c.clearRect(0,0,targetCanvas.width,targetCanvas.height); c.drawImage(item.img,0,0); const id=item.id||'ID'; const text=`From: @${id} | 整理分享: @${MY_ID}`; const fontSize=Math.floor(targetCanvas.width/44); c.font=`500 ${fontSize}px -apple-system, sans-serif`; c.textAlign='center'; c.fillStyle=item.isDark?'rgba(40,40,40,.45)':'rgba(255,255,255,.65)'; c.fillText(text, targetCanvas.width/2, targetCanvas.height*item.watermarkY); }
+function renderPreviewStrip(){ previewStrip.innerHTML=''; images.forEach((item,index)=>{ const card=document.createElement('div'); card.className=`preview-card ${index===activeIndex?'active':''}`; card.onclick=()=>{ activeIndex=index; syncActiveToUI(); }; const wrap=document.createElement('div'); wrap.className='thumb-wrap'; const thumb=document.createElement('img'); thumb.className='preview-thumb'; thumb.src=item.src; const order=document.createElement('div'); order.className='thumb-index'; order.textContent=`${index+1}/${images.length}`; const state=document.createElement('div'); state.className='thumb-state'; state.textContent = item.ocrStatus==='loading' ? '识别中' : (item.platformDetected ? platformLabel(item.platformDetected) : platformLabel(item.platformPreference || selectedPlatform)); wrap.append(thumb,order,state); const meta=document.createElement('div'); meta.className='preview-meta'; if(item.ocrStatus==='loading') meta.textContent='正在识别...'; else if(item.id) meta.textContent=`@${item.id}`; else if(item.ocrStatus==='fail') meta.textContent='待手动填写'; else meta.textContent='待处理'; card.append(wrap,meta); previewStrip.appendChild(card); }); }
+function updateStats(){ countTotal.textContent=images.length; countDone.textContent=images.filter(v=>(v.id||'').trim()).length; countActive.textContent=activeIndex>=0?String(activeIndex+1):'0'; }
+function updatePos(clientY){ const item=getActiveItem(); if(!item) return; const rect=canvas.getBoundingClientRect(); item.watermarkY=Math.max(.02,Math.min(.98,(clientY-rect.top)/rect.height)); posSlider.value=Math.round(item.watermarkY*100); sliderValue.textContent=`${Math.round(item.watermarkY*100)}%`; draw(); }
+function buildExportCanvas(item){ const exportCanvas=document.createElement('canvas'); draw(exportCanvas, item); return exportCanvas; }
+async function saveItem(item,index){ const exportCanvas=buildExportCanvas(item); const safeId=(item.id||'ID').replace(/[^a-zA-Z0-9._-]/g,'_'); const fileName=`Watermark_${String(index+1).padStart(2,'0')}_${safeId}.png`; const blob=await canvasToBlob(exportCanvas); if(!blob) throw new Error('导出失败');
+  if(navigator.canShare && navigator.canShare({ files:[blobToFile(blob,fileName)] }) && isIOS()){
+    await navigator.share({ files:[blobToFile(blob,fileName)], title:fileName });
+    return 'share';
   }
-  status.innerText = `✅ 已触发 ${images.length} 张图片的下载`;
-};
+  const url=URL.createObjectURL(blob); const link=document.createElement('a'); link.href=url; link.download=fileName; document.body.appendChild(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url), 2000); return 'download'; }
+async function saveAllAsZip(){ if(!images.length) return; if(typeof JSZip==='undefined') throw new Error('ZIP 组件加载失败'); const zip=new JSZip(); for(let i=0;i<images.length;i++){ status.innerHTML=`<span class="loader"></span> 正在打包 ${i+1}/${images.length}...`; const c=buildExportCanvas(images[i]); const blob=await canvasToBlob(c); const safeId=(images[i].id||'ID').replace(/[^a-zA-Z0-9._-]/g,'_'); zip.file(`Watermark_${String(i+1).padStart(2,'0')}_${safeId}.png`, blob); }
+  status.innerHTML='<span class="loader"></span> 正在生成 ZIP...'; const zipBlob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}}); const name=`watermark_batch_${Date.now()}.zip`; if(navigator.canShare && navigator.canShare({ files:[blobToFile(zipBlob,name)] }) && isIOS()) await navigator.share({ files:[blobToFile(zipBlob,name)], title:name });
+  else { const url=URL.createObjectURL(zipBlob); const link=document.createElement('a'); link.href=url; link.download=name; document.body.appendChild(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url), 4000); }
+}
 
-btnClear.onclick = () => {
-  images = []; activeIndex = -1;
-  previewStrip.innerHTML = ''; ctx.clearRect(0,0,canvas.width,canvas.height);
-  idInput.value = ''; posSlider.value = 88; sliderValue.textContent = '88%';
-  editor.classList.add('hidden'); bottomBar.classList.add('hidden');
-  updateStats(); status.innerText = '已清空，重新上传即可';
-};
+container.onmousedown=()=>isDragging=true; window.onmousemove=e=>{ if(isDragging) updatePos(e.clientY); }; window.onmouseup=()=>isDragging=false;
+container.ontouchstart=e=>{ isDragging=true; updatePos(e.touches[0].clientY); };
+container.ontouchmove=e=>{ if(isDragging){ e.preventDefault(); updatePos(e.touches[0].clientY); } };
+container.ontouchend=()=>isDragging=false;
+idInput.oninput=()=>{ const item=getActiveItem(); if(!item) return; item.id=idInput.value.trim(); item.manualEdited=true; renderPreviewStrip(); updateStats(); draw(); };
+posSlider.oninput=e=>{ const item=getActiveItem(); if(!item) return; item.watermarkY=e.target.value/100; sliderValue.textContent=`${e.target.value}%`; draw(); };
+function toggleColorForActive(){ const item=getActiveItem(); if(!item) return; item.isDark=!item.isDark; styleMode.textContent=item.isDark?'深色':'浅色'; draw(); }
+btnColor.onclick = toggleColorForActive; btnColorMobile.onclick = toggleColorForActive;
+function applyStyleToAll(){ const item=getActiveItem(); if(!item) return; images.forEach(v=>{ v.watermarkY=item.watermarkY; v.isDark=item.isDark; }); renderPreviewStrip(); draw(); status.innerText='✅ 已将当前水印位置和黑白字同步到全部图片'; }
+btnApplyAll.onclick = applyStyleToAll; btnApplyAllMobile.onclick = applyStyleToAll;
+btnSave.onclick = async ()=>{ const item=getActiveItem(); if(!item) return; try{ status.innerHTML='<span class="loader"></span> 正在准备当前图片...'; await saveItem(item, activeIndex); status.innerText='✅ 当前图片已触发保存 / 分享'; } catch(e){ status.innerText='⚠️ 保存失败，请重试'; console.error(e);} };
+btnSaveMobile.onclick = btnSave.onclick;
+btnSaveAll.onclick = async ()=>{ try{ await saveAllAsZip(); status.innerText='✅ 批量包已生成'; } catch(e){ status.innerText='⚠️ 批量保存失败，请稍后重试'; console.error(e);} };
+platformSeg.querySelectorAll('button').forEach(btn=>{ btn.onclick = async ()=>{ selectedPlatform = btn.dataset.platform; platformSeg.querySelectorAll('button').forEach(v=>v.classList.toggle('active', v===btn)); currentPlatform.textContent=`模式：${platformLabel(selectedPlatform)}`; ocrNote.textContent=`当前默认：${platformLabel(selectedPlatform)}`; images.forEach(v=>v.platformPreference=selectedPlatform); const item=getActiveItem(); if(item && ocrReady){ status.innerHTML='<span class="loader"></span> 正在按新模式重识别当前图片...'; await recognizeID(item, activeIndex); } renderPreviewStrip(); }; });
 </script>
 </body>
 </html>
